@@ -436,16 +436,55 @@ function randomSalt(){ return uid(16) + uid(16); }
 function normalizeUsername(u){ return u.trim().toLowerCase().replace(/\s+/g,''); }
 
 // ---------- Storage helpers ----------
+function getStorageDriver(){
+  if(window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function' && typeof window.storage.list === 'function'){
+    return {
+      async get(key, shared){
+        const result = await window.storage.get(key, shared);
+        if(result == null) return null;
+        return result.value ?? result;
+      },
+      async set(key, value, shared){
+        return window.storage.set(key, value, shared);
+      },
+      async list(prefix, shared){
+        const result = await window.storage.list(prefix, shared);
+        if(!result) return [];
+        return Array.isArray(result) ? result : result.keys || [];
+      }
+    };
+  }
+  return {
+    async get(key){ return localStorage.getItem(key); },
+    async set(key, value){ localStorage.setItem(key, value); },
+    async list(prefix){
+      const keys = [];
+      for(let i = 0; i < localStorage.length; i++){
+        const key = localStorage.key(i);
+        if(key && key.startsWith(prefix)) keys.push(key);
+      }
+      return keys;
+    }
+  };
+}
+const storageDriver = getStorageDriver();
+
 async function sget(key, shared=false){
-  try{ const r = await window.storage.get(key, shared); return r ? JSON.parse(r.value) : null; }
-  catch(e){ return null; }
+  try{
+    const value = await storageDriver.get(key, shared);
+    if(value == null) return null;
+    if(typeof value === 'string'){
+      return JSON.parse(value);
+    }
+    return value;
+  }catch(e){ return null; }
 }
 async function sset(key, value, shared=false){
-  try{ await window.storage.set(key, JSON.stringify(value), shared); return true; }
+  try{ await storageDriver.set(key, JSON.stringify(value), shared); return true; }
   catch(e){ console.error('storage set failed', e); return false; }
 }
 async function slist(prefix, shared=false){
-  try{ const r = await window.storage.list(prefix, shared); return r ? r.keys : []; }
+  try{ return await storageDriver.list(prefix, shared); }
   catch(e){ return []; }
 }
 
@@ -1006,3 +1045,4 @@ init();
 </script>
 </body>
 </html>
+
