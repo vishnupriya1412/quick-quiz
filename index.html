@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0" />
+<title>QuickQuiz</title>
+<meta name="theme-color" content="#16233F" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="QuickQuiz" />
+<meta name="description" content="Create a quiz, share one code, watch results roll in." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link id="manifest-link" rel="manifest" href="" />
+<link id="icon-link" rel="icon" href="" />
+<link id="apple-icon-link" rel="apple-touch-icon" href="" />
+<style>
+  :root{
+    --ink:#16233F;
+    --ink-soft:#3A4A6B;
+    --paper:#EEEBE1;
+    --paper-alt:#E3DFD1;
+    --line:#D6D2C4;
+    --gold:#E2A233;
+    --gold-deep:#B87F1B;
+    --green:#3E8F63;
+    --green-bg:#E4EFE8;
+    --red:#C1473B;
+    --red-bg:#F5E5E2;
+    --font-display:'Space Grotesk', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overscroll-behavior-y:none;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:var(--font-body);
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    min-height:100dvh;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px);
+    background-size: 100% 42px;
+    background-position: 0 120px;
+    -webkit-user-select:none; user-select:none;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  input, textarea, .option-btn, .card, table.results td{
+    -webkit-user-select:text; user-select:text;
+  }
+  #app{max-width:920px; margin:0 auto; padding:0 20px 100px;}
+  #app.has-navbar{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
+
+  /* App shell transitions */
+  #app{animation: screen-in .22s ease;}
+  @keyframes screen-in{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    #app{animation:none;}
+  }
+
+  /* Splash / boot screen */
+  #boot{
+    position:fixed; inset:0; background:var(--ink); color:#fff;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; z-index:999; transition:opacity .3s ease;
+  }
+  #boot .mark{
+    width:56px; height:56px; border-radius:50%; background:var(--gold);
+    border:2.5px solid #fff; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:24px; color:var(--ink);
+  }
+  #boot .label{font-family:var(--font-display); font-weight:600; font-size:15px; letter-spacing:.02em; opacity:.9;}
+  #boot.hide{opacity:0; pointer-events:none;}
+
+  /* Bottom app nav */
+  .app-navbar{
+    position:fixed; left:0; right:0; bottom:0; z-index:40;
+    background:#fff; border-top:1.5px solid var(--ink);
+    display:flex; justify-content:center;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .app-navbar .navwrap{
+    max-width:920px; width:100%; display:flex;
+  }
+  .nav-btn{
+    flex:1; background:none; border:none; padding:10px 6px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    font-family:var(--font-body); font-size:11px; color:var(--ink-soft);
+    font-weight:600;
+  }
+  .nav-btn .nav-dot{
+    width:22px; height:22px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-family:var(--font-mono); font-size:11px; font-weight:700;
+    border:1.5px solid transparent;
+  }
+  .nav-btn.active{color:var(--ink);}
+  .nav-btn.active .nav-dot{background:var(--gold); border-color:var(--ink);}
+
+  /* Install banner */
+  .install-banner{
+    position:fixed; top:calc(10px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%);
+    z-index:60; background:var(--ink); color:#fff; padding:10px 14px; border-radius:10px;
+    display:flex; align-items:center; gap:12px; font-size:13px; box-shadow:3px 3px 0 var(--gold);
+    max-width:92vw;
+  }
+  .install-banner button{
+    background:var(--gold); color:var(--ink); border:none; border-radius:6px;
+    padding:6px 12px; font-size:12.5px; font-weight:700; font-family:var(--font-display);
+  }
+  .install-banner .dismiss{
+    background:none; color:#fff; opacity:.6; padding:4px; font-size:16px; font-weight:400;
+  }
+  a{color:inherit;}
+  button{font-family:var(--font-display); cursor:pointer;}
+  input, textarea{font-family:var(--font-body);}
+
+  /* Header */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:28px 0 22px;
+  }
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    font-family:var(--font-display); font-weight:700; font-size:22px;
+    letter-spacing:-0.02em;
+  }
+  .brand .mark{
+    width:30px; height:30px; border-radius:50%;
+    background:var(--gold); border:2px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--ink);
+  }
+  .who{
+    font-family:var(--font-mono); font-size:13px; color:var(--ink-soft);
+    display:flex; align-items:center; gap:10px;
+  }
+  .who button{
+    background:none; border:none; text-decoration:underline;
+    font-family:var(--font-body); color:var(--ink-soft); font-size:13px;
+  }
+
+  /* Bubble code signature */
+  .bubble-row{display:flex; gap:8px; justify-content:center;}
+  .bubble{
+    width:44px; height:44px; border-radius:50%;
+    border:2.5px solid var(--ink);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:19px;
+    background:var(--gold); color:var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .bubble-row.small .bubble{
+    width:26px; height:26px; font-size:12px; box-shadow:1px 1px 0 var(--ink); border-width:2px;
+  }
+
+  /* Cards */
+  .card{
+    background:#fff; border:1.5px solid var(--ink);
+    border-radius:14px; padding:28px;
+    box-shadow: 4px 4px 0 var(--paper-alt), 4px 4px 0 1.5px var(--ink);
+  }
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media (max-width:640px){.grid-2{grid-template-columns:1fr;}}
+
+  .choice-card{
+    cursor:pointer; transition:transform .12s ease;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .choice-card:hover{transform:translate(-2px,-2px); box-shadow:6px 6px 0 var(--paper-alt), 6px 6px 0 1.5px var(--ink);}
+  .choice-card .icon-row{display:flex; justify-content:space-between; align-items:flex-start;}
+  .choice-card .tag{
+    font-family:var(--font-mono); font-size:11px; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--ink-soft);
+  }
+  .choice-card h2{font-family:var(--font-display); font-size:26px; letter-spacing:-0.01em;}
+  .choice-card p{color:var(--ink-soft); font-size:14.5px; line-height:1.5;}
+  .choice-card .go{
+    font-family:var(--font-mono); font-size:13px; font-weight:700;
+    color:var(--gold-deep);
+  }
+
+  h1.hero-title{
+    font-family:var(--font-display); font-weight:700;
+    font-size:clamp(30px, 5vw, 44px); letter-spacing:-0.02em;
+    text-align:center; margin-bottom:8px;
+  }
+  .hero-sub{
+    text-align:center; color:var(--ink-soft); font-size:15.5px;
+    max-width:520px; margin:0 auto 40px;
+  }
+  .hero-block{padding-top:26px;}
+
+  /* Forms */
+  label{
+    display:block; font-family:var(--font-mono); font-size:12px;
+    text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=number]{
+    width:100%; padding:12px 14px; border:1.5px solid var(--ink);
+    border-radius:8px; font-size:15px; background:#fff; color:var(--ink);
+  }
+  input:focus, textarea:focus, button:focus-visible{
+    outline:3px solid var(--gold); outline-offset:1px;
+  }
+  .field{margin-bottom:18px;}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:12px 20px; border-radius:8px; border:1.5px solid var(--ink);
+    font-weight:600; font-size:14.5px; background:var(--ink); color:#fff;
+    box-shadow:3px 3px 0 var(--gold);
+  }
+  .btn:hover{transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--gold);}
+  .btn:active{transform:translate(1px,1px); box-shadow:1px 1px 0 var(--gold);}
+  .btn.secondary{background:#fff; color:var(--ink); box-shadow:3px 3px 0 var(--paper-alt);}
+  .btn.danger{background:var(--red); box-shadow:3px 3px 0 #8f2f26;}
+  .btn.block{width:100%; justify-content:center;}
+  .btn[disabled]{opacity:.5; cursor:not-allowed; box-shadow:none; transform:none;}
+  .btn-row{display:flex; gap:12px; flex-wrap:wrap;}
+
+  .back-link{
+    font-family:var(--font-mono); font-size:13px; color:var(--ink-soft);
+    background:none; border:none; margin-bottom:20px; display:inline-flex;
+    align-items:center; gap:6px; text-decoration:none;
+  }
+  .back-link:hover{color:var(--ink);}
+
+  /* Question builder */
+  .q-block{
+    border:1.5px dashed var(--line); border-radius:12px; padding:20px;
+    margin-bottom:16px; position:relative;
+  }
+  .q-num{
+    font-family:var(--font-mono); font-weight:700; font-size:13px;
+    color:var(--gold-deep); margin-bottom:10px; display:block;
+  }
+  .opt-row{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .opt-row input[type=text]{flex:1;}
+  .opt-radio{
+    width:20px; height:20px; border-radius:50%; border:2px solid var(--ink);
+    flex-shrink:0; cursor:pointer; position:relative; background:#fff;
+  }
+  .opt-radio.checked{background:var(--green);}
+  .opt-radio.checked::after{
+    content:"✓"; position:absolute; inset:0; display:flex; align-items:center;
+    justify-content:center; color:#fff; font-size:12px; font-weight:700;
+  }
+  .remove-q{
+    position:absolute; top:14px; right:14px; background:none; border:none;
+    color:var(--red); font-family:var(--font-mono); font-size:12px; text-decoration:underline;
+  }
+
+  /* Dashboard list */
+  .quiz-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 18px; border:1.5px solid var(--ink); border-radius:10px;
+    margin-bottom:12px; background:#fff; gap:12px; flex-wrap:wrap;
+  }
+  .quiz-row .info h3{font-family:var(--font-display); font-size:17px;}
+  .quiz-row .info .meta{font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); margin-top:2px;}
+
+  .empty-state{
+    text-align:center; padding:50px 20px; color:var(--ink-soft);
+    border:1.5px dashed var(--line); border-radius:12px;
+  }
+  .empty-state h3{font-family:var(--font-display); color:var(--ink); margin-bottom:8px; font-size:19px;}
+
+  /* Taking a quiz */
+  .progress-track{
+    height:8px; background:var(--paper-alt); border-radius:4px; border:1.5px solid var(--ink);
+    overflow:hidden; margin-bottom:26px;
+  }
+  .progress-fill{height:100%; background:var(--gold); transition:width .25s ease;}
+  .option-btn{
+    display:block; width:100%; text-align:left; padding:14px 16px;
+    border:1.5px solid var(--ink); border-radius:10px; background:#fff;
+    margin-bottom:12px; font-size:15px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  .option-btn:hover{background:var(--paper);}
+  .option-btn.selected{background:var(--gold); font-weight:600;}
+  .option-btn .letter{
+    width:26px; height:26px; border-radius:50%; border:1.5px solid var(--ink);
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-mono);
+    font-size:12px; font-weight:700; flex-shrink:0; background:#fff;
+  }
+  .option-btn.selected .letter{background:var(--ink); color:#fff;}
+  .option-btn.correct{background:var(--green-bg); border-color:var(--green);}
+  .option-btn.incorrect{background:var(--red-bg); border-color:var(--red);}
+
+  .score-hero{text-align:center; padding:20px 0 10px;}
+  .score-num{font-family:var(--font-display); font-size:64px; font-weight:700; letter-spacing:-0.02em;}
+  .score-label{font-family:var(--font-mono); color:var(--ink-soft); font-size:13px; text-transform:uppercase; letter-spacing:.06em;}
+
+  table.results{width:100%; border-collapse:collapse; margin-top:10px;}
+  table.results th, table.results td{
+    text-align:left; padding:12px 10px; border-bottom:1px solid var(--line); font-size:14.5px;
+  }
+  table.results th{
+    font-family:var(--font-mono); font-size:11px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--ink-soft);
+  }
+  .rank-badge{
+    display:inline-flex; width:24px; height:24px; border-radius:50%;
+    background:var(--paper-alt); border:1.5px solid var(--ink); align-items:center;
+    justify-content:center; font-family:var(--font-mono); font-size:11px; font-weight:700;
+  }
+
+  .toast{
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:12px 20px; border-radius:8px;
+    font-size:14px; box-shadow:3px 3px 0 var(--gold); z-index:50;
+    opacity:0; pointer-events:none; transition:opacity .2s ease;
+  }
+  .toast.show{opacity:1;}
+
+  .share-box{
+    border:1.5px solid var(--ink); border-radius:12px; padding:26px;
+    background:var(--ink); color:#fff; text-align:center; margin-bottom:24px;
+  }
+  .share-box .cap{font-family:var(--font-mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em; opacity:.7; margin-bottom:16px;}
+  .code-line{font-family:var(--font-mono); font-size:14px; opacity:.85; margin-top:16px;}
+  .loading{text-align:center; padding:60px 20px; color:var(--ink-soft); font-family:var(--font-mono); font-size:14px;}
+  .error-box{
+    border:1.5px solid var(--red); background:var(--red-bg); color:var(--red);
+    border-radius:10px; padding:14px 16px; font-size:14px; margin-bottom:18px;
+  }
+  .stat-row{display:flex; gap:16px; flex-wrap:wrap; margin-bottom:24px;}
+  .stat{
+    flex:1; min-width:120px; border:1.5px solid var(--ink); border-radius:10px;
+    padding:16px; background:#fff;
+  }
+  .stat .num{font-family:var(--font-display); font-size:28px; font-weight:700;}
+  .stat .lbl{font-family:var(--font-mono); font-size:11px; text-transform:uppercase; color:var(--ink-soft); letter-spacing:.05em;}
+</style>
+</head>
+<body>
+<div id="boot">
+  <div class="mark">Q</div>
+  <div class="label">QuickQuiz</div>
+</div>
+<div id="app"></div>
+<div class="toast" id="toast"></div>
+<div id="app-navbar-slot"></div>
+
+<script>
+// ---------- App shell: icon, manifest, install, service worker ----------
+const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="40" fill="#16233F"/>
+  <circle cx="96" cy="96" r="54" fill="#E2A233" stroke="#ffffff" stroke-width="6"/>
+  <text x="96" y="115" font-family="'JetBrains Mono', monospace" font-size="60" font-weight="700" fill="#16233F" text-anchor="middle">Q</text>
+</svg>`;
+function iconDataUri(){ return 'data:image/svg+xml;base64,' + btoa(ICON_SVG); }
+
+function setupManifestAndIcons(){
+  const icon = iconDataUri();
+  document.getElementById('icon-link').setAttribute('href', icon);
+  document.getElementById('apple-icon-link').setAttribute('href', icon);
+  const manifest = {
+    name: "QuickQuiz",
+    short_name: "QuickQuiz",
+    description: "Create a quiz, share one code, watch results roll in.",
+    start_url: location.pathname,
+    display: "standalone",
+    background_color: "#EEEBE1",
+    theme_color: "#16233F",
+    icons: [
+      { src: icon, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(blob));
+}
+
+function setupServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+  try{
+    const swCode = `
+      self.addEventListener('install', e => self.skipWaiting());
+      self.addEventListener('activate', e => self.clients.claim());
+      self.addEventListener('fetch', e => {});
+    `;
+    const swBlob = new Blob([swCode], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(()=>{});
+  }catch(e){ /* not supported in this context, fine */ }
+}
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallBanner();
+});
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function showInstallBanner(){
+  if(isStandalone()) return;
+  if(document.getElementById('install-banner')) return;
+  const b = document.createElement('div');
+  b.className='install-banner';
+  b.id='install-banner';
+  b.innerHTML = `<span>Install QuickQuiz for one-tap access</span><button onclick="triggerInstall()">Install</button><button class="dismiss" onclick="this.parentElement.remove()">✕</button>`;
+  document.body.appendChild(b);
+}
+async function triggerInstall(){
+  const banner = document.getElementById('install-banner');
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+  }
+  if(banner) banner.remove();
+}
+function hideBoot(){
+  const b = document.getElementById('boot');
+  if(b){ b.classList.add('hide'); setTimeout(()=>b.remove(), 350); }
+}
+
+// ---------- Password auth helpers (client-side hashing) ----------
+async function hashPassword(password, salt){
+  const enc = new TextEncoder();
+  const data = enc.encode(salt + ':' + password);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function randomSalt(){ return uid(16) + uid(16); }
+function normalizeUsername(u){ return u.trim().toLowerCase().replace(/\s+/g,''); }
+
+// ---------- Storage helpers ----------
+async function sget(key, shared=false){
+  try{ const r = await window.storage.get(key, shared); return r ? JSON.parse(r.value) : null; }
+  catch(e){ return null; }
+}
+async function sset(key, value, shared=false){
+  try{ await window.storage.set(key, JSON.stringify(value), shared); return true; }
+  catch(e){ console.error('storage set failed', e); return false; }
+}
+async function slist(prefix, shared=false){
+  try{ const r = await window.storage.list(prefix, shared); return r ? r.keys : []; }
+  catch(e){ return []; }
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function uid(len=8){
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s=''; for(let i=0;i<len;i++) s+=chars[Math.floor(Math.random()*chars.length)];
+  return s;
+}
+function genCode(){ return uid(5); }
+function esc(s){ const d=document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+
+// ---------- App State ----------
+let state = { view:'home', profile:null, participantId: uid(10), authMode:'login', authError:'' };
+const app = document.getElementById('app');
+
+async function loadProfile(){
+  const session = await sget('session', false);
+  if(session && session.username){
+    const user = await sget('user:'+session.username, true);
+    state.profile = user ? { name: user.displayName, username: user.username } : null;
+    if(!user) await sset('session', null, false);
+  } else {
+    state.profile = null;
+  }
+}
+
+async function logout(){
+  await sset('session', null, false);
+  state.profile = null;
+  state.view = 'home';
+  render();
+}
+
+function bubbleRow(code, small=false){
+  return `<div class="bubble-row ${small?'small':''}">${code.split('').map(c=>`<div class="bubble">${esc(c)}</div>`).join('')}</div>`;
+}
+
+function header(){
+  return `
+    <div class="topbar">
+      <div class="brand"><div class="mark">Q</div>QuickQuiz</div>
+      <div class="who">
+        ${state.profile
+          ? `${esc(state.profile.name)} · <button onclick="goHome()">Home</button> · <button onclick="logout()">Log out</button>`
+          : `<button onclick="goHome()">Home</button>`}
+      </div>
+    </div>
+  `;
+}
+
+const NAV_VIEWS = ['home','dashboard','join'];
+
+function renderNavbar(){
+  const slot = document.getElementById('app-navbar-slot');
+  if(!NAV_VIEWS.includes(state.view)){ slot.innerHTML=''; app.classList.remove('has-navbar'); return; }
+  app.classList.add('has-navbar');
+  const items = [
+    { view:'home', label:'Home', dot:'•' },
+    { view:'dashboard', label:'Host', dot:'Q', action: async ()=>{ await startHost(); } },
+    { view:'join', label:'Join', dot:'#' },
+  ];
+  slot.innerHTML = `
+    <div class="app-navbar"><div class="navwrap">
+      ${items.map(it=>`
+        <button class="nav-btn ${state.view===it.view?'active':''}" data-nav="${it.view}">
+          <span class="nav-dot">${it.dot}</span>${it.label}
+        </button>
+      `).join('')}
+    </div></div>
+  `;
+  slot.querySelectorAll('.nav-btn').forEach((btn,i)=>{
+    btn.addEventListener('click', ()=>{
+      const target = items[i];
+      if(target.action) target.action();
+      else { state.view = target.view; render(); }
+    });
+  });
+}
+
+async function render(){
+  let body = '';
+  if(state.view==='home') body = viewHome();
+  else if(state.view==='host-signin') body = viewHostSignin();
+  else if(state.view==='dashboard') body = await viewDashboard();
+  else if(state.view==='builder') body = viewBuilder();
+  else if(state.view==='share') body = viewShare();
+  else if(state.view==='results') body = await viewResults();
+  else if(state.view==='join') body = viewJoin();
+  else if(state.view==='take') body = viewTake();
+  else if(state.view==='score') body = viewScore();
+
+  app.innerHTML = header() + body;
+  app.classList.remove('screen-in-replay');
+  void app.offsetWidth; // restart animation
+  app.style.animation = 'none';
+  void app.offsetWidth;
+  app.style.animation = '';
+  renderNavbar();
+  window.scrollTo(0,0);
+  hideBoot();
+}
+
+// ---------- HOME ----------
+function goHome(){ state.view='home'; render(); }
+
+function viewHome(){
+  return `
+    <div class="hero-block">
+      <h1 class="hero-title">Quizzes, made and shared in minutes.</h1>
+      <p class="hero-sub">Build a quiz, hand out one short code, and watch results land in real time. No accounts to manage, no spreadsheets to chase.</p>
+      <div class="grid-2">
+        <div class="card choice-card" onclick="startHost()">
+          <div class="icon-row"><span class="tag">For hosts</span></div>
+          <h2>Create a quiz</h2>
+          <p>Write your questions, mark the right answers, and get a 5-letter code to hand out to anyone.</p>
+          <span class="go">Start building →</span>
+        </div>
+        <div class="card choice-card" onclick="state.view='join'; render();">
+          <div class="icon-row"><span class="tag">For participants</span></div>
+          <h2>Join with a code</h2>
+          <p>Got a code from a host? Enter it, answer the questions, and see your score instantly.</p>
+          <span class="go">Enter a code →</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function startHost(){
+  await loadProfile();
+  if(state.profile){ state.view='dashboard'; }
+  else { state.authMode='login'; state.authError=''; state.view='host-signin'; }
+  render();
+}
+
+// ---------- HOST LOGIN / SIGN UP ----------
+function viewHostSignin(){
+  const isLogin = state.authMode === 'login';
+  return `
+    <div style="max-width:420px; margin:40px auto 0;">
+      <button class="back-link" onclick="goHome()">← Back</button>
+      <div class="card">
+        <div class="btn-row" style="margin-bottom:20px; border-bottom:1.5px solid var(--line); padding-bottom:14px;">
+          <button class="btn ${isLogin?'':'secondary'}" style="flex:1; justify-content:center;" onclick="switchAuthMode('login')">Log in</button>
+          <button class="btn ${isLogin?'secondary':''}" style="flex:1; justify-content:center;" onclick="switchAuthMode('signup')">Sign up</button>
+        </div>
+        <h2 style="font-family:var(--font-display); font-size:22px; margin-bottom:6px;">${isLogin?'Welcome back':'Create your host account'}</h2>
+        <p style="color:var(--ink-soft); font-size:14px; margin-bottom:20px;">${isLogin?'Log in to see the quizzes you have created.':'This name and password identify you as a quiz host on this device and any other.'}</p>
+        ${!isLogin ? `
+        <div class="field">
+          <label>Display name</label>
+          <input type="text" id="auth-displayname" placeholder="e.g. Vishnu Priya" />
+        </div>` : ''}
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="auth-username" placeholder="e.g. 123@example.com" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="auth-password" placeholder="At least 8 characters" autocomplete="${isLogin?'current-password':'new-password'}" />
+        </div>
+        ${!isLogin ? `
+        <div class="field">
+          <label>Confirm password</label>
+          <input type="password" id="auth-password2" placeholder="Re-enter password" autocomplete="new-password" />
+        </div>` : ''}
+        ${state.authError ? `<div class="error-box">${esc(state.authError)}</div>` : ''}
+        <button class="btn block" onclick="${isLogin?'doLogin()':'doSignup()'}">${isLogin?'Log in':'Create account'}</button>
+      </div>
+    </div>
+  `;
+}
+function switchAuthMode(mode){ state.authMode = mode; state.authError=''; render(); }
+
+async function doSignup(){
+  const displayName = document.getElementById('auth-displayname').value.trim();
+  const rawUsername = document.getElementById('auth-username').value.trim();
+  const pw = document.getElementById('auth-password').value;
+  const pw2 = document.getElementById('auth-password2').value;
+  const username = normalizeUsername(rawUsername);
+
+  if(!displayName || !username || !pw){ state.authError='Fill in every field.'; render(); return; }
+  if(pw.length<6){ state.authError='Password needs at least 6 characters.'; render(); return; }
+  if(pw !== pw2){ state.authError='Passwords do not match.'; render(); return; }
+
+  const existing = await sget('user:'+username, true);
+  if(existing){ state.authError='That username is already taken.'; render(); return; }
+
+  const salt = randomSalt();
+  const hash = await hashPassword(pw, salt);
+  const user = { username, displayName, salt, hash, createdAt: Date.now() };
+  await sset('user:'+username, user, true);
+  await sset('session', { username }, false);
+
+  state.profile = { name: displayName, username };
+  state.authError='';
+  state.view='dashboard';
+  render();
+}
+
+async function doLogin(){
+  const rawUsername = document.getElementById('auth-username').value.trim();
+  const pw = document.getElementById('auth-password').value;
+  const username = normalizeUsername(rawUsername);
+
+  if(!username || !pw){ state.authError='Enter your username and password.'; render(); return; }
+
+  const user = await sget('user:'+username, true);
+  if(!user){ state.authError='No account found with that username.'; render(); return; }
+
+  const hash = await hashPassword(pw, user.salt);
+  if(hash !== user.hash){ state.authError='Incorrect password.'; render(); return; }
+
+  await sset('session', { username }, false);
+  state.profile = { name: user.displayName, username };
+  state.authError='';
+  state.view='dashboard';
+  render();
+}
+
+// ---------- DASHBOARD ----------
+async function viewDashboard(){
+  const myQuizzes = await sget('my-quizzes:'+state.profile.username, true) || [];
+  let listHtml = '';
+  if(myQuizzes.length===0){
+    listHtml = `<div class="empty-state"><h3>No quizzes yet</h3><p>Create your first quiz and get a shareable code.</p></div>`;
+  } else {
+    const rows = await Promise.all(myQuizzes.slice().reverse().map(async code=>{
+      const quiz = await sget('quiz:'+code, true);
+      if(!quiz) return '';
+      const resultKeys = await slist('result:'+code+':', true);
+      return `
+        <div class="quiz-row">
+          <div class="info">
+            <h3>${esc(quiz.title)}</h3>
+            <div class="meta">${quiz.questions.length} question${quiz.questions.length===1?'':'s'} · ${resultKeys.length} response${resultKeys.length===1?'':'s'} · code ${esc(code)}</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn secondary" onclick="viewQuizResults('${code}')">Results</button>
+            <button class="btn secondary" onclick="openShare('${code}')">Share</button>
+          </div>
+        </div>
+      `;
+    }));
+    listHtml = rows.join('');
+  }
+  return `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px;">
+      <h2 style="font-family:var(--font-display); font-size:24px;">Your quizzes</h2>
+      <button class="btn" onclick="newQuiz()">+ New quiz</button>
+    </div>
+    ${listHtml}
+  `;
+}
+
+function openShare(code){ state.currentCode = code; state.view='share'; render(); }
+function viewQuizResults(code){ state.currentCode = code; state.view='results'; render(); }
+
+// ---------- BUILDER ----------
+function newQuiz(){
+  state.draft = { title:'', questions:[ blankQuestion() ] };
+  state.view='builder';
+  render();
+}
+function blankQuestion(){ return { text:'', options:['','',''], correct:0 }; }
+
+function viewBuilder(){
+  const d = state.draft;
+  const qHtml = d.questions.map((q,qi)=>`
+    <div class="q-block">
+      ${d.questions.length>1?`<button class="remove-q" onclick="removeQuestion(${qi})">Remove</button>`:''}
+      <span class="q-num">Question ${qi+1}</span>
+      <div class="field">
+        <input type="text" placeholder="Type your question…" value="${esc(q.text)}" oninput="updateQText(${qi}, this.value)" />
+      </div>
+      ${q.options.map((opt,oi)=>`
+        <div class="opt-row">
+          <div class="opt-radio ${q.correct===oi?'checked':''}" onclick="setCorrect(${qi},${oi})" title="Mark as correct answer"></div>
+          <input type="text" placeholder="Option ${oi+1}" value="${esc(opt)}" oninput="updateOpt(${qi},${oi},this.value)" />
+          ${q.options.length>2?`<button class="remove-q" style="position:static;" onclick="removeOpt(${qi},${oi})">✕</button>`:''}
+        </div>
+      `).join('')}
+      <button class="btn secondary" style="margin-top:4px; font-size:13px; padding:8px 14px;" onclick="addOpt(${qi})">+ Add option</button>
+    </div>
+  `).join('');
+
+  return `
+    <button class="back-link" onclick="cancelBuilder()">← Back to dashboard</button>
+    <div class="card" style="margin-bottom:20px;">
+      <div class="field">
+        <label>Quiz title</label>
+        <input type="text" id="quiz-title" placeholder="e.g. Friday Trivia Night" value="${esc(d.title)}" oninput="state.draft.title=this.value" />
+      </div>
+    </div>
+    ${qHtml}
+    <div class="btn-row" style="margin-bottom:24px;">
+      <button class="btn secondary" onclick="addQuestion()">+ Add question</button>
+    </div>
+    <button class="btn block" onclick="publishQuiz()">Publish & get code</button>
+  `;
+}
+function cancelBuilder(){ state.view='dashboard'; render(); }
+function updateQText(qi,val){ state.draft.questions[qi].text = val; }
+function updateOpt(qi,oi,val){ state.draft.questions[qi].options[oi] = val; }
+function setCorrect(qi,oi){ state.draft.questions[qi].correct = oi; render(); }
+function addOpt(qi){ if(state.draft.questions[qi].options.length<6){ state.draft.questions[qi].options.push(''); render(); } else toast('Max 6 options'); }
+function removeOpt(qi,oi){
+  const q = state.draft.questions[qi];
+  if(q.options.length<=2){ toast('Need at least 2 options'); return; }
+  q.options.splice(oi,1);
+  if(q.correct>=q.options.length) q.correct = 0;
+  render();
+}
+function addQuestion(){ state.draft.questions.push(blankQuestion()); render(); }
+function removeQuestion(qi){ state.draft.questions.splice(qi,1); render(); }
+
+async function publishQuiz(){
+  const d = state.draft;
+  const title = document.getElementById('quiz-title').value.trim();
+  if(!title){ toast('Give your quiz a title'); return; }
+  for(const q of d.questions){
+    if(!q.text.trim()){ toast('Every question needs text'); return; }
+    if(q.options.some(o=>!o.trim())){ toast('Fill in every option'); return; }
+  }
+  d.title = title;
+
+  let code = genCode();
+  let attempts=0;
+  while(await sget('quiz:'+code, true) && attempts<5){ code = genCode(); attempts++; }
+
+  const quiz = {
+    code, title: d.title, createdBy: state.profile.name, createdAt: Date.now(),
+    questions: d.questions.map(q=>({ text:q.text.trim(), options:q.options.map(o=>o.trim()), correct:q.correct }))
+  };
+  await sset('quiz:'+code, quiz, true);
+
+  const mine = await sget('my-quizzes:'+state.profile.username, true) || [];
+  mine.push(code);
+  await sset('my-quizzes:'+state.profile.username, mine, true);
+
+  state.currentCode = code;
+  state.view='share';
+  render();
+}
+
+// ---------- SHARE ----------
+function viewShare(){
+  const code = state.currentCode;
+  const url = location.href.split('#')[0].split('?')[0] + '?quiz=' + code;
+  return `
+    <button class="back-link" onclick="state.view='dashboard'; render();">← Back to dashboard</button>
+    <div class="share-box">
+      <div class="cap">Your quiz is live — share this code</div>
+      ${bubbleRow(code)}
+      <div class="code-line">Anyone who opens QuickQuiz can enter this code to join.</div>
+    </div>
+    <div class="btn-row" style="justify-content:center; margin-bottom:10px;">
+      <button class="btn" onclick="copyCode('${code}')">Copy code</button>
+      <button class="btn secondary" onclick="copyLink('${esc(url)}')">Copy link</button>
+      <button class="btn secondary" onclick="viewQuizResults('${code}')">View live results</button>
+    </div>
+  `;
+}
+function copyCode(code){ navigator.clipboard.writeText(code).then(()=>toast('Code copied')); }
+function copyLink(url){ navigator.clipboard.writeText(url).then(()=>toast('Link copied')); }
+
+// ---------- RESULTS ----------
+async function viewResults(){
+  const code = state.currentCode;
+  const quiz = await sget('quiz:'+code, true);
+  if(!quiz) return `<div class="error-box">This quiz couldn't be found.</div>`;
+  const keys = await slist('result:'+code+':', true);
+  const results = (await Promise.all(keys.map(k=>sget(k, true)))).filter(Boolean);
+  results.sort((a,b)=> (b.score/b.total) - (a.score/a.total) || a.submittedAt - b.submittedAt);
+
+  const avg = results.length ? (results.reduce((s,r)=>s+ r.score/r.total,0)/results.length*100).toFixed(0) : '—';
+  const total = quiz.questions.length;
+
+  const rows = results.map((r,i)=>`
+    <tr>
+      <td><span class="rank-badge">${i+1}</span></td>
+      <td>${esc(r.name)}</td>
+      <td style="font-family:var(--font-mono);">${r.score}/${r.total}</td>
+      <td style="font-family:var(--font-mono);">${Math.round(r.score/r.total*100)}%</td>
+      <td style="font-family:var(--font-mono); color:var(--ink-soft); font-size:12.5px;">${new Date(r.submittedAt).toLocaleTimeString()}</td>
+    </tr>
+  `).join('');
+
+  return `
+    <button class="back-link" onclick="state.view='dashboard'; render();">← Back to dashboard</button>
+    <h2 style="font-family:var(--font-display); font-size:24px; margin-bottom:4px;">${esc(quiz.title)}</h2>
+    <p style="color:var(--ink-soft); font-size:14px; margin-bottom:20px;">Code ${esc(code)} · ${total} question${total===1?'':'s'}</p>
+    <div class="stat-row">
+      <div class="stat"><div class="num">${results.length}</div><div class="lbl">Responses</div></div>
+      <div class="stat"><div class="num">${avg}${avg!=='—'?'%':''}</div><div class="lbl">Average score</div></div>
+    </div>
+    <div class="card">
+      <div class="btn-row" style="justify-content:space-between; margin-bottom:10px;">
+        <h3 style="font-family:var(--font-display); font-size:17px;">Leaderboard</h3>
+        <button class="btn secondary" style="padding:8px 14px; font-size:13px;" onclick="render()">Refresh</button>
+      </div>
+      ${results.length===0 ? `<div class="empty-state"><h3>No responses yet</h3><p>Share the code and results will appear here as people finish.</p></div>` : `
+      <table class="results">
+        <thead><tr><th>#</th><th>Name</th><th>Score</th><th>%</th><th>Submitted</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`}
+    </div>
+  `;
+}
+
+// ---------- JOIN ----------
+function viewJoin(){
+  return `
+    <div style="max-width:440px; margin:30px auto 0;">
+      <button class="back-link" onclick="goHome()">← Back</button>
+      <div class="card">
+        <h2 style="font-family:var(--font-display); font-size:22px; margin-bottom:14px;">Join a quiz</h2>
+        <div class="field">
+          <label>Your name</label>
+          <input type="text" id="join-name" placeholder="e.g. Alex" />
+        </div>
+        <div class="field">
+          <label>Quiz code</label>
+          <input type="text" id="join-code" placeholder="e.g. K7QXM" style="text-transform:uppercase; font-family:var(--font-mono); letter-spacing:.1em;" maxlength="8" />
+        </div>
+        <div id="join-error"></div>
+        <button class="btn block" onclick="joinQuiz()">Join quiz</button>
+      </div>
+    </div>
+  `;
+}
+async function joinQuiz(){
+  const name = document.getElementById('join-name').value.trim();
+  const code = document.getElementById('join-code').value.trim().toUpperCase();
+  const errBox = document.getElementById('join-error');
+  if(!name || !code){ errBox.innerHTML = `<div class="error-box">Enter both your name and the quiz code.</div>`; return; }
+  const quiz = await sget('quiz:'+code, true);
+  if(!quiz){ errBox.innerHTML = `<div class="error-box">No quiz found with that code. Double-check and try again.</div>`; return; }
+  state.takerName = name;
+  state.currentCode = code;
+  state.currentQuiz = quiz;
+  state.answers = new Array(quiz.questions.length).fill(null);
+  state.qIndex = 0;
+  state.view='take';
+  render();
+}
+
+// ---------- TAKE QUIZ ----------
+function viewTake(){
+  const quiz = state.currentQuiz;
+  const qi = state.qIndex;
+  const q = quiz.questions[qi];
+  const pct = Math.round((qi)/quiz.questions.length*100);
+  const selected = state.answers[qi];
+
+  const opts = q.options.map((opt,oi)=>`
+    <button class="option-btn ${selected===oi?'selected':''}" onclick="selectAnswer(${oi})">
+      <span class="letter">${String.fromCharCode(65+oi)}</span> ${esc(opt)}
+    </button>
+  `).join('');
+
+  const isLast = qi === quiz.questions.length-1;
+
+  return `
+    <p style="font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); margin-bottom:4px;">${esc(quiz.title)} · Question ${qi+1} of ${quiz.questions.length}</p>
+    <div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <div class="card" style="margin-bottom:22px;">
+      <h2 style="font-family:var(--font-display); font-size:21px; margin-bottom:20px;">${esc(q.text)}</h2>
+      ${opts}
+    </div>
+    <div class="btn-row" style="justify-content:space-between;">
+      <button class="btn secondary" ${qi===0?'disabled':''} onclick="prevQ()">← Previous</button>
+      ${isLast
+        ? `<button class="btn" ${selected===null?'disabled':''} onclick="submitQuiz()">Submit quiz</button>`
+        : `<button class="btn" ${selected===null?'disabled':''} onclick="nextQ()">Next →</button>`}
+    </div>
+  `;
+}
+function selectAnswer(oi){ state.answers[state.qIndex] = oi; render(); }
+function nextQ(){ state.qIndex++; render(); }
+function prevQ(){ state.qIndex--; render(); }
+
+async function submitQuiz(){
+  const quiz = state.currentQuiz;
+  let score = 0;
+  quiz.questions.forEach((q,i)=>{ if(state.answers[i]===q.correct) score++; });
+  const result = {
+    participantId: state.participantId, name: state.takerName,
+    answers: state.answers, score, total: quiz.questions.length, submittedAt: Date.now()
+  };
+  await sset('result:'+state.currentCode+':'+state.participantId, result, true);
+  state.lastResult = result;
+  state.view='score';
+  render();
+}
+
+// ---------- SCORE ----------
+function viewScore(){
+  const r = state.lastResult;
+  const quiz = state.currentQuiz;
+  const pct = Math.round(r.score/r.total*100);
+  const review = quiz.questions.map((q,i)=>{
+    const yourAns = state.answers[i];
+    return `
+      <div class="q-block" style="border-style:solid;">
+        <span class="q-num">Question ${i+1}</span>
+        <p style="font-family:var(--font-display); font-size:16px; margin-bottom:12px;">${esc(q.text)}</p>
+        ${q.options.map((opt,oi)=>{
+          let cls='';
+          if(oi===q.correct) cls='correct';
+          else if(oi===yourAns) cls='incorrect';
+          return `<div class="option-btn ${cls}" style="cursor:default;"><span class="letter">${String.fromCharCode(65+oi)}</span> ${esc(opt)} ${oi===q.correct?' — correct answer':''}${oi===yourAns && oi!==q.correct?' — your answer':''}</div>`;
+        }).join('')}
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="card">
+      <div class="score-hero">
+        <div class="score-label">Your score</div>
+        <div class="score-num">${r.score}/${r.total}</div>
+        <div class="score-label">${pct}%</div>
+      </div>
+    </div>
+    <div style="margin-top:26px;">
+      <h3 style="font-family:var(--font-display); font-size:18px; margin-bottom:14px;">Review your answers</h3>
+      ${review}
+    </div>
+    <button class="btn block" style="margin-top:10px;" onclick="goHome()">Done</button>
+  `;
+}
+
+// ---------- Init: support ?quiz=CODE deep link ----------
+async function init(){
+  setupManifestAndIcons();
+  setupServiceWorker();
+  await loadProfile();
+  const params = new URLSearchParams(location.search);
+  const preCode = params.get('quiz');
+  if(preCode){
+    const quiz = await sget('quiz:'+preCode.toUpperCase(), true);
+    if(quiz){
+      state.view='join';
+      render();
+      setTimeout(()=>{ const el=document.getElementById('join-code'); if(el) el.value = preCode.toUpperCase(); }, 0);
+      return;
+    }
+  }
+  render();
+}
+init();
+</script>
+</body>
+</html>
